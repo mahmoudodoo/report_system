@@ -4,25 +4,6 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='style_report.css') }}">
-<style>
-.location-btn, .call-btn {
-    background: #f0f0f0;
-    border: 1px solid #ccc;
-    padding: 8px 16px;
-    border-radius: 30px;
-    font-family: inherit;
-    font-size: 14px;
-    cursor: pointer;
-    transition: 0.2s;
-}
-.location-btn:hover { background: #e0e0e0; }
-.call-btn {
-    background: #2f855a;
-    color: white;
-    border: none;
-}
-.call-btn:hover { background: #276749; }
-</style>
 {% endblock %}
 
 {% block content %}
@@ -34,12 +15,16 @@
                 <div class="step-circle done">✓</div>
                 <span class="step-label">اختيار النوع</span>
             </div>
+
             <div class="step-line done"></div>
+
             <div class="step">
                 <div class="step-circle active">2</div>
                 <span class="step-label">تفاصيل البلاغ</span>
             </div>
+
             <div class="step-line"></div>
+
             <div class="step">
                 <div class="step-circle pending">3</div>
                 <span class="step-label">تم الإرسال</span>
@@ -57,20 +42,6 @@
             <div class="field">
                 <label>الجهة المقترحة</label>
                 <input type="text" id="currentTypePreview" value="{{ type }}" readonly>
-            </div>
-
-            <!-- NEW: Location & Call buttons -->
-            <div class="field">
-                <label>الموقع الجغرافي</label>
-                <div style="display: flex; gap: 12px; margin-bottom: 12px;">
-                    <button type="button" id="getLocationBtn" class="location-btn">
-                        <i class="fa-solid fa-location-dot"></i> إرسال الموقع الحالي
-                    </button>
-                    <button type="button" id="callReportBtn" class="call-btn">
-                        <i class="fa-solid fa-phone"></i> الإبلاغ عبر مكالمة هاتفية
-                    </button>
-                </div>
-                <div id="locationStatus" style="font-size: 13px; color: #2f855a;"></div>
             </div>
 
             <div class="field">
@@ -91,50 +62,4 @@
         </div>
     </div>
 </div>
-
-<script>
-// Location button
-const getLocationBtn = document.getElementById("getLocationBtn");
-const locationStatus = document.getElementById("locationStatus");
-
-if (getLocationBtn) {
-    getLocationBtn.addEventListener("click", () => {
-        if (!navigator.geolocation) {
-            locationStatus.innerText = "المتصفح لا يدعم تحديد الموقع.";
-            return;
-        }
-        locationStatus.innerText = "جاري الحصول على الموقع...";
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                const response = await fetch("/save-location", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ lat, lng })
-                });
-                const data = await response.json();
-                if (data.success) {
-                    locationStatus.innerHTML = "✅ تم حفظ موقعك بنجاح. يمكنك الآن استخدام مكالمة الهاتف.";
-                } else {
-                    locationStatus.innerText = "فشل حفظ الموقع، حاول مرة أخرى.";
-                }
-            },
-            (error) => {
-                locationStatus.innerText = "تعذر الحصول على الموقع: " + error.message;
-            }
-        );
-    });
-}
-
-// Call report button
-const callReportBtn = document.getElementById("callReportBtn");
-if (callReportBtn) {
-    callReportBtn.addEventListener("click", async () => {
-        const confirmCall = confirm("سيتم الاتصال برقم هاتفك المسجل. هل أنت مستعد؟");
-        if (!confirmCall) return;
-        window.location.href = "/initiate-call-report";
-    });
-}
-</script>
 {% endblock %}
