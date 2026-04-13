@@ -39,7 +39,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["UPLOAD_FOLDER"] = os.path.join("static", "uploads")
 
-# Mail settings (unchanged)
+# Mail settings
 app.config["MAIL_SERVER"] = "smtp.gmail.com"
 app.config["MAIL_PORT"] = 587
 app.config["MAIL_USE_TLS"] = True
@@ -47,11 +47,11 @@ app.config["MAIL_USERNAME"] = "ablgah.official@gmail.com"
 app.config["MAIL_PASSWORD"] = "ollgvdgnfkqodscc"
 app.config["MAIL_DEFAULT_SENDER"] = "ablgah.official@gmail.com"
 
-# Twilio settings
+# Twilio settings (read from environment)
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER", "+17406658652")
-SUPPORT_AGENT_NUMBER = os.getenv("SUPPORT_AGENT_NUMBER")   # e.g. "+966512345678"
+SUPPORT_AGENT_NUMBER = os.getenv("SUPPORT_AGENT_NUMBER")
 
 # AssemblyAI
 AAI_API_KEY = os.getenv("ASSEMBLYAI_API_KEY")
@@ -99,7 +99,6 @@ class SupportMessage(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
     is_read = db.Column(db.Boolean, default=False)
 
-# NEW: CallReport model
 class CallReport(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
@@ -107,7 +106,7 @@ class CallReport(db.Model):
     transcript = db.Column(db.Text, nullable=True)
     location_lat = db.Column(db.Float, nullable=True)
     location_lng = db.Column(db.Float, nullable=True)
-    status = db.Column(db.String(20), default="pending")   # pending, transcribed, forwarded, completed
+    status = db.Column(db.String(20), default="pending")
     call_sid = db.Column(db.String(100), nullable=True)
     recording_url = db.Column(db.String(500), nullable=True)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
@@ -140,7 +139,6 @@ def get_current_user():
     return None
 
 def classify_problem(transcript):
-    """Categorise the problem based on transcript keywords."""
     t = transcript.lower()
     if any(word in t for word in ["حريق", "fire", "flame", "burning"]):
         return "حريق"
@@ -171,7 +169,7 @@ def inject_user_preferences():
     }
 
 # ------------------------------
-# Existing Routes (unchanged, but included fully)
+# Existing Routes (unchanged)
 # ------------------------------
 @app.route("/")
 def home():
@@ -610,7 +608,7 @@ def logout():
     return redirect(url_for("login_page"))
 
 # ------------------------------
-# NEW: Call Report System Routes
+# NEW: Call Report System Routes (fixed)
 # ------------------------------
 @app.route("/save-location", methods=["POST"])
 @login_required
@@ -624,19 +622,19 @@ def save_location():
         return jsonify({"success": True})
     return jsonify({"success": False}), 400
 
-@app.route("/initiate-call-report", methods=["POST"])
+@app.route("/initiate-call-report", methods=["POST"])   # <-- only POST now
 @login_required
 def initiate_call_report():
     user = get_current_user()
     if not user.phone:
-        flash("يرجى إضافة رقم هاتفك في الملف الشخصي أولاً", "error")
-        return redirect(url_for("profile_page"))
+        return jsonify({"error": "رقم الهاتف غير موجود. يرجى إضافته في الملف الشخصي."}), 400
+
     lat = session.get("temp_lat")
     lng = session.get("temp_lng")
     if not lat or not lng:
-        flash("يرجى تحديد موقعك باستخدام زر 'إرسال الموقع الحالي' أولاً", "error")
-        return redirect(url_for("report_form", report_type="عام"))
-    # Create a pending CallReport
+        return jsonify({"error": "يرجى تحديد موقعك باستخدام زر 'إرسال الموقع الحالي' أولاً"}), 400
+
+    # Create pending CallReport
     call_report = CallReport(
         user_id=user.id,
         location_lat=lat,
@@ -645,6 +643,7 @@ def initiate_call_report():
     )
     db.session.add(call_report)
     db.session.commit()
+
     try:
         call = twilio_client.calls.create(
             url=url_for("voice_webhook", report_id=call_report.id, _external=True),
@@ -653,16 +652,13 @@ def initiate_call_report():
         )
         call_report.call_sid = call.sid
         db.session.commit()
-        flash("جاري الاتصال بك... ستصلك مكالمة على رقم هاتفك المسجل.", "success")
+        return jsonify({"success": True, "message": "جاري الاتصال بك..."})
     except Exception as e:
-        flash(f"حدث خطأ أثناء بدء المكالمة: {str(e)}", "error")
-    return redirect(url_for("report_page"))
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/voice-webhook/<int:report_id>", methods=["POST"])
 def voice_webhook(report_id):
-    """First Twilio webhook: ask user to record a message."""
     response = VoiceResponse()
-    # Record the user's speech (max 30 seconds, transcribe using AssemblyAI later)
     response.say("مرحباً، هذه منصة أبلغ. بعد سماع صوت التنبيه، صف مشكلتك بالعربية أو الإنجليزية بوضوح.", voice="woman")
     response.record(
         action=url_for("process_recording", report_id=report_id, _external=True),
@@ -676,18 +672,16 @@ def voice_webhook(report_id):
 
 @app.route("/process-recording/<int:report_id>", methods=["POST"])
 def process_recording(report_id):
-    """Handle the recorded audio, send to AssemblyAI for transcription & categorisation."""
     recording_url = request.form.get("RecordingUrl")
     call_report = CallReport.query.get(report_id)
     if not call_report:
         return "Report not found", 404
+
     call_report.recording_url = recording_url
     call_report.status = "transcribing"
     db.session.commit()
-    # Download audio and transcribe with AssemblyAI
+
     try:
-        # AssemblyAI requires a publicly accessible URL. Twilio RecordingUrl is public (but needs auth? we'll use download)
-        # Simpler: Use AssemblyAI's direct URL transcription
         transcript_response = aai.Transcript.transcribe(recording_url)
         if transcript_response.status == "completed":
             transcript = transcript_response.text
@@ -696,7 +690,8 @@ def process_recording(report_id):
             call_report.problem_category = category
             call_report.status = "transcribed"
             db.session.commit()
-            # Also create a normal Report
+
+            # Create normal report
             normal_report = Report(
                 type=category,
                 description=f"[مكالمة هاتفية] {transcript[:200]}",
@@ -712,7 +707,8 @@ def process_recording(report_id):
         call_report.status = "error"
         db.session.commit()
         print(f"AssemblyAI error: {e}")
-    # Now forward the call to support agent
+
+    # Forward to support agent
     response = VoiceResponse()
     response.say("شكراً لك. جاري تحويلك إلى أحد المختصين، الرجاء الانتظار.", voice="woman")
     if SUPPORT_AGENT_NUMBER:
@@ -723,7 +719,6 @@ def process_recording(report_id):
 
 @app.route("/voice-incoming", methods=["POST"])
 def voice_incoming():
-    """If a user calls the Twilio number directly."""
     response = VoiceResponse()
     response.say("مرحباً بك في منصة أبلغ. الرجاء تسجيل الدخول إلى الموقع لاستخدام خدمة المكالمات.", voice="woman")
     return str(response)
