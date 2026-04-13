@@ -4,3 +4,7 @@ SQLAlchemy
 Werkzeug
 Flask-Mail
 itsdangerous
+twilio
+assemblyai
+requests
+python-dotenv
