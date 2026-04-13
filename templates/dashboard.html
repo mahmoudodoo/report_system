@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}لوحة البلاغات{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='style_panel.css') }}">
+<style>
+.tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+.tab-btn {
+    padding: 10px 22px;
+    border: none;
+    border-radius: 8px;
+    background: #f0f0f0;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    color: #555;
+    transition: all 0.2s;
+}
+.tab-btn.active {
+    background: #2f855a;
+    color: #fff;
+}
+.tab-content {
+    display: none;
+}
+.tab-content.active {
+    display: block;
+}
+.delete-btn {
+    background: #e53e3e;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.2s;
+}
+.delete-btn:hover { background: #c53030; }
+.promote-btn {
+    background: #2f855a;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.2s;
+}
+.promote-btn:hover { background: #276749; }
+.status-select {
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-page">
+    <div class="dashboard-card">
+
+        <div class="dashboard-header">
+            <i class="fa-solid fa-shield-halved"></i>
+            <h1>لوحة تحكم الأدمن</h1>
+            <p>استعراض جميع البلاغات المقدمة وإدارة المستخدمين.</p>
+        </div>
+
+        <!-- تبويبات -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('reports', this)">
+                <i class="fa-solid fa-table-list"></i>
+                البلاغات ({{ reports|length }})
+            </button>
+            <button class="tab-btn" onclick="showTab('users', this)">
+                <i class="fa-solid fa-users"></i>
+                المستخدمون ({{ users|length }})
+            </button>
+        </div>
+
+        <!-- تبويب البلاغات -->
+        <div id="tab-reports" class="tab-content active">
+            {% if reports %}
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>رقم البلاغ</th>
+                            <th>النوع</th>
+                            <th>الوصف</th>
+                            <th>الحالة</th>
+                            <th>تغيير الحالة</th>
+                            <th>التفاصيل</th>
+                            <th>حذف</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in reports %}
+                        <tr>
+                            <td>#{{ report.id }}</td>
+                            <td>{{ report.type }}</td>
+                            <td class="description-cell">{{ report.description }}</td>
+                            <td>
+                                {% if report.status == 'جديد' %}
+                                    <span class="status new">جديد</span>
+                                {% elif report.status == 'قيد المعالجة' %}
+                                    <span class="status processing">قيد المعالجة</span>
+                                {% else %}
+                                    <span class="status closed">مغلق</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <form action="{{ url_for('update_report', report_id=report.id) }}" method="POST">
+                                    <select name="new_status" class="status-select" onchange="this.form.submit()">
+                                        <option value="new"        {% if report.status == 'جديد' %}selected{% endif %}>جديد</option>
+                                        <option value="processing" {% if report.status == 'قيد المعالجة' %}selected{% endif %}>قيد المعالجة</option>
+                                        <option value="closed"     {% if report.status == 'مغلق' %}selected{% endif %}>مغلق</option>
+                                    </select>
+                                </form>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('details', report_id=report.id) }}" class="details-btn">عرض</a>
+                            </td>
+                            <td>
+                                <form action="{{ url_for('delete_report', report_id=report.id) }}" method="POST"
+                                      onsubmit="return confirm('هل أنت متأكد من حذف هذا البلاغ؟')">
+                                    <button type="submit" class="delete-btn">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-box">
+                <i class="fa-solid fa-inbox"></i>
+                <p>لا توجد بلاغات حالياً.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- تبويب المستخدمين -->
+        <div id="tab-users" class="tab-content">
+            {% if users %}
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>رقم</th>
+                            <th>الاسم</th>
+                            <th>البريد الإلكتروني</th>
+                            <th>الجوال</th>
+                            <th>الصلاحية</th>
+                            <th>ترقية لأدمن</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in users %}
+                        <tr>
+                            <td>#{{ u.id }}</td>
+                            <td>{{ u.name }}</td>
+                            <td>{{ u.email }}</td>
+                            <td>{{ u.phone or '—' }}</td>
+                            <td>
+                                {% if u.is_admin %}
+                                    <span class="status processing">أدمن</span>
+                                {% else %}
+                                    <span class="status new">مستخدم</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if not u.is_admin %}
+                                <!-- زر ترقية مستخدم لأدمن -->
+                                <form action="{{ url_for('promote_to_admin', user_id=u.id) }}" method="POST"
+                                      onsubmit="return confirm('هل تريد ترقية {{ u.name }} لأدمن؟')">
+                                    <button type="submit" class="promote-btn">
+                                        <i class="fa-solid fa-shield-halved"></i>
+                                        ترقية
+                                    </button>
+                                </form>
+                                {% else %}
+                                <span style="color:#999; font-size:13px;">أدمن بالفعل</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-box">
+                <i class="fa-solid fa-users-slash"></i>
+                <p>لا يوجد مستخدمون مسجلون.</p>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+<script>
+function showTab(name, btn) {
+    document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.getElementById("tab-" + name).classList.add("active");
+    btn.classList.add("active");
+}
+</script>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}تقديم بلاغ{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='style_report.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="report-page-wrapper">
+    <div class="page-container">
+        <h2>اختر نوع البلاغ:</h2>
+
+        <div class="progress-bar">
+            <div class="step">
+                <div class="step-circle active">1</div>
+                <span class="step-label">اختيار النوع</span>
+            </div>
+            <div class="step-line"></div>
+            <div class="step">
+                <div class="step-circle pending">2</div>
+                <span class="step-label">تفاصيل البلاغ</span>
+            </div>
+            <div class="step-line"></div>
+            <div class="step">
+                <div class="step-circle pending">3</div>
+                <span class="step-label">تم الإرسال</span>
+            </div>
+        </div>
+
+        <div class="cards-grid">
+            <div class="card" onclick="selectType('بلدية')">
+                <div class="icon-circle">
+                    <svg viewBox="0 0 24 24" stroke="#2f855a" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="26" height="26"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></svg>
+                </div>
+                <h3>بلدية</h3>
+                <p>بلاغات تخص الخدمات البلدية</p>
+                <div class="link-btn">قدّم بلاغ ←</div>
+            </div>
+
+            <div class="card" onclick="selectType('كهرباء')">
+                <div class="icon-circle">
+                    <svg viewBox="0 0 24 24" stroke="#2f855a" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="26" height="26"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                </div>
+                <h3>كهرباء</h3>
+                <p>بلاغات تخص انقطاع الكهرباء</p>
+                <div class="link-btn">قدّم بلاغ ←</div>
+            </div>
+
+            <div class="card" onclick="selectType('مياه')">
+                <div class="icon-circle">
+                    <svg viewBox="0 0 24 24" stroke="#2f855a" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="26" height="26"><path d="M12 2C6 8 4 12 4 15a8 8 0 0016 0c0-3-2-7-8-13z"/></svg>
+                </div>
+                <h3>مياه</h3>
+                <p>بلاغات تخص المياه والصرف</p>
+                <div class="link-btn">قدّم بلاغ ←</div>
+            </div>
+
+            <div class="card" onclick="selectType('طرق وجسور')">
+                <div class="icon-circle">
+                    <svg viewBox="0 0 24 24" stroke="#2f855a" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="26" height="26"><path d="M3 17l4-10h10l4 10M3 17h18M7 17v2M17 17v2M12 7v10"/></svg>
+                </div>
+                <h3>طرق وجسور</h3>
+                <p>بلاغات تخص الطرق والجسور</p>
+                <div class="link-btn">قدّم بلاغ ←</div>
+            </div>
+
+            <div class="card" onclick="selectType('صحة')">
+                <div class="icon-circle">
+                    <svg viewBox="0 0 24 24" stroke="#2f855a" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="26" height="26"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                </div>
+                <h3>صحة</h3>
+                <p>بلاغات تخص الخدمات الصحية</p>
+                <div class="link-btn">قدّم بلاغ ←</div>
+            </div>
+
+            <div class="card" onclick="selectType('تعليم')">
+                <div class="icon-circle">
+                    <svg viewBox="0 0 24 24" stroke="#2f855a" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="26" height="26"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2zM22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+                </div>
+                <h3>تعليم</h3>
+                <p>بلاغات تخص القطاع التعليمي</p>
+                <div class="link-btn">قدّم بلاغ ←</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function selectType(type) {
+    window.location.href = '/report/' + encodeURIComponent(type);
+}
+</script>
+{% endblock %}
