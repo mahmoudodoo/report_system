@@ -8,3 +8,5 @@ twilio
 assemblyai
 requests
 python-dotenv
+openai-whisper
+torch

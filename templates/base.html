@@ -90,7 +90,7 @@
                 <i class="fa-solid fa-flag"></i>
                 تقديم بلاغ
             </a>
-  
+
             <a href="{{ url_for('my_reports') }}">
                 <i class="fa-solid fa-folder-open"></i>
                 بلاغاتي
@@ -125,7 +125,7 @@
               {% endif %}
             </a>
 <a href="{{ url_for('about_us') }}">
-    
+
      <i class="fa-solid fa-lightbulb"></i>
     عن المنصة
 </a>
@@ -404,6 +404,7 @@ if (aiChatInput) {
     });
 }
 
+// ========== UPDATED VOICE RECORDING: sends to emergency-voice-report endpoint ==========
 let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
@@ -428,18 +429,31 @@ if (voiceChatBtn) {
                     const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/webm" });
                     const formData = new FormData();
                     formData.append("audio", audioBlob, "recording.webm");
-                    appendMessage("⏳ جاري تحويل الصوت إلى نص...", "ai-message");
+                    appendMessage("⏳ جاري تحليل الصوت والكشف عن الحالات الطارئة...", "ai-message");
                     try {
-                        const response = await fetch("/ai-transcribe", { method: "POST", body: formData });
+                        const response = await fetch("/emergency-voice-report", { method: "POST", body: formData });
                         const data = await response.json();
-                        if (data.error) { appendMessage("تعذر تحويل الصوت الآن، حاولي مرة ثانية.", "ai-message"); return; }
-                        if (data.transcript) {
-                            aiChatInput.value = data.transcript;
+                        if (data.error) {
+                            appendMessage(`❌ فشل التحليل: ${data.error}`, "ai-message");
+                            return;
+                        }
+                        let reply = `📝 النص: ${data.transcript}\n\n`;
+                        if (data.emergency) {
+                            reply += `🚨 تم تصنيف المشكلة كـ "${data.category}" وهي حالة طارئة! `;
+                            if (data.call_initiated) {
+                                reply += `تم إبلاغ فريق الطوارئ وسيتم الاتصال بك قريباً. (رقم المكالمة: ${data.call_sid})`;
+                            } else {
+                                reply += `لم نتمكن من إبلاغ فريق الطوارئ (خطأ في الاتصال). سيتم مراجعة البلاغ يدوياً.`;
+                            }
+                        } else {
+                            reply += `لم يتم التعرف على مشكلة طارئة. سيتم إضافة بلاغ عادي.`;
+                            // Optionally, auto‑fill the description field on the report form
                             const descriptionField = document.getElementById("description");
                             if (descriptionField) descriptionField.value = data.transcript;
                         }
+                        appendMessage(reply, "ai-message");
                     } catch (error) {
-                        appendMessage("فشل إرسال التسجيل الصوتي إلى السيرفر.", "ai-message");
+                        appendMessage("❌ فشل الاتصال بالخادم أثناء تحليل الصوت.", "ai-message");
                     } finally {
                         if (currentStream) { currentStream.getTracks().forEach(track => track.stop()); currentStream = null; }
                     }
@@ -447,7 +461,7 @@ if (voiceChatBtn) {
                 mediaRecorder.start();
                 isRecording = true;
                 voiceChatBtn.classList.add("recording");
-                appendMessage("🎙️ بدأ التسجيل... تكلمي الآن ثم اضغطي نفس الزر للإيقاف.", "ai-message");
+                appendMessage("🎙️ بدأ التسجيل... تحدث الآن ثم اضغط نفس الزر للإيقاف.", "ai-message");
             } else {
                 mediaRecorder.stop();
                 isRecording = false;
@@ -455,7 +469,7 @@ if (voiceChatBtn) {
                 appendMessage("⏹️ توقف التسجيل، جاري المعالجة...", "ai-message");
             }
         } catch (err) {
-            appendMessage("لم يتم السماح بالوصول إلى الميكروفون.", "ai-message");
+            appendMessage("❌ لم يتم السماح بالوصول إلى الميكروفون.", "ai-message");
             isRecording = false;
             voiceChatBtn.classList.remove("recording");
         }

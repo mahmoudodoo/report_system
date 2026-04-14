@@ -4,6 +4,41 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='style_my_reports.css') }}">
+<style>
+.call-badge {
+    background-color: #4a5568;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 12px;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+.status {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+}
+.status.new { background: #e53e3e; color: white; }
+.status.processing { background: #ed8936; color: white; }
+.status.closed { background: #48bb78; color: white; }
+.description-cell {
+    max-width: 300px;
+    white-space: normal;
+    word-break: break-word;
+}
+.details-btn {
+    background: #2f855a;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+}
+.details-btn:hover { background: #276749; }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -13,7 +48,7 @@
         <div class="reports-header">
             <i class="fa-solid fa-folder-open"></i>
             <h1>بلاغاتي</h1>
-            <p>يمكنك من هنا متابعة جميع البلاغات الخاصة بك وحالتها الحالية.</p>
+            <p>يمكنك من هنا متابعة جميع البلاغات الخاصة بك (الكتابية والهاتفية) وحالتها الحالية.</p>
         </div>
 
         {% if reports %}
@@ -31,7 +66,12 @@
                 <tbody>
                     {% for report in reports %}
                     <tr>
-                        <td>#{{ report.id }}</td>
+                        <td>
+                            #{{ report.id }}
+                            {% if report.is_call %}
+                            <span class="call-badge">📞 هاتفي</span>
+                            {% endif %}
+                        </td>
                         <td>{{ report.type }}</td>
                         <td class="description-cell">{{ report.description }}</td>
                         <td>
@@ -44,9 +84,15 @@
                             {% endif %}
                         </td>
                         <td>
-                            <a href="{{ url_for('details', report_id=report.id) }}" class="details-btn">
-                                عرض
-                            </a>
+                            {% if report.is_call %}
+                                <a href="{{ url_for('call_report_details', call_id=report.call_id) }}" class="details-btn">
+                                    عرض التفاصيل
+                                </a>
+                            {% else %}
+                                <a href="{{ url_for('details', report_id=report.id) }}" class="details-btn">
+                                    عرض
+                                </a>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}

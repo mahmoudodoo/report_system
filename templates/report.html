@@ -5,7 +5,6 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='style_report.css') }}">
 <style>
-/* Additional styles for call buttons */
 .card-call-btn, .global-location-btn {
     background: #2f855a;
     color: white;
@@ -21,6 +20,10 @@
     transition: 0.2s;
 }
 .card-call-btn:hover { background: #276749; }
+.card-call-btn:disabled {
+    background: #aaa;
+    cursor: not-allowed;
+}
 .global-location-btn {
     background: #4a5568;
     margin-bottom: 20px;
@@ -32,6 +35,18 @@
     font-size: 13px;
     margin-top: 8px;
     color: #2f855a;
+}
+.spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 </style>
 {% endblock %}
@@ -75,7 +90,7 @@
                 <h3>بلدية</h3>
                 <p>بلاغات تخص الخدمات البلدية</p>
                 <div class="link-btn" onclick="selectType('بلدية')">قدّم بلاغ كتابي ←</div>
-                <button class="card-call-btn" onclick="initiateCall('بلدية')">
+                <button class="card-call-btn" onclick="initiateCall('بلدية', this)">
                     <i class="fa-solid fa-phone"></i> بلاغ عبر المكالمة
                 </button>
             </div>
@@ -87,7 +102,7 @@
                 <h3>كهرباء</h3>
                 <p>بلاغات تخص انقطاع الكهرباء</p>
                 <div class="link-btn" onclick="selectType('كهرباء')">قدّم بلاغ كتابي ←</div>
-                <button class="card-call-btn" onclick="initiateCall('كهرباء')">
+                <button class="card-call-btn" onclick="initiateCall('كهرباء', this)">
                     <i class="fa-solid fa-phone"></i> بلاغ عبر المكالمة
                 </button>
             </div>
@@ -99,7 +114,7 @@
                 <h3>مياه</h3>
                 <p>بلاغات تخص المياه والصرف</p>
                 <div class="link-btn" onclick="selectType('مياه')">قدّم بلاغ كتابي ←</div>
-                <button class="card-call-btn" onclick="initiateCall('مياه')">
+                <button class="card-call-btn" onclick="initiateCall('مياه', this)">
                     <i class="fa-solid fa-phone"></i> بلاغ عبر المكالمة
                 </button>
             </div>
@@ -111,7 +126,7 @@
                 <h3>طرق وجسور</h3>
                 <p>بلاغات تخص الطرق والجسور</p>
                 <div class="link-btn" onclick="selectType('طرق وجسور')">قدّم بلاغ كتابي ←</div>
-                <button class="card-call-btn" onclick="initiateCall('طرق وجسور')">
+                <button class="card-call-btn" onclick="initiateCall('طرق وجسور', this)">
                     <i class="fa-solid fa-phone"></i> بلاغ عبر المكالمة
                 </button>
             </div>
@@ -123,7 +138,7 @@
                 <h3>صحة</h3>
                 <p>بلاغات تخص الخدمات الصحية</p>
                 <div class="link-btn" onclick="selectType('صحة')">قدّم بلاغ كتابي ←</div>
-                <button class="card-call-btn" onclick="initiateCall('صحة')">
+                <button class="card-call-btn" onclick="initiateCall('صحة', this)">
                     <i class="fa-solid fa-phone"></i> بلاغ عبر المكالمة
                 </button>
             </div>
@@ -135,7 +150,7 @@
                 <h3>تعليم</h3>
                 <p>بلاغات تخص القطاع التعليمي</p>
                 <div class="link-btn" onclick="selectType('تعليم')">قدّم بلاغ كتابي ←</div>
-                <button class="card-call-btn" onclick="initiateCall('تعليم')">
+                <button class="card-call-btn" onclick="initiateCall('تعليم', this)">
                     <i class="fa-solid fa-phone"></i> بلاغ عبر المكالمة
                 </button>
             </div>
@@ -144,12 +159,11 @@
 </div>
 
 <script>
-// Original function for written report
 function selectType(type) {
     window.location.href = '/report/' + encodeURIComponent(type);
 }
 
-// Location button (global)
+// Location button
 const locationBtn = document.getElementById("globalLocationBtn");
 const locationStatus = document.getElementById("locationStatus");
 
@@ -183,31 +197,20 @@ if (locationBtn) {
     });
 }
 
-// Call initiation function
-async function initiateCall(reportType) {
-    // Check if location is saved
+// Call initiation with spinner
+async function initiateCall(reportType, button) {
     const locationStatusText = locationStatus.innerText;
     if (!locationStatusText.includes("تم حفظ موقعك")) {
         alert("يرجى أولاً الضغط على 'إرسال الموقع الحالي' والسماح بتحديد الموقع.");
         return;
     }
-
     const confirmCall = confirm(`سيتم الاتصال برقم هاتفك المسجل لتقديم بلاغ من نوع "${reportType}". هل أنت مستعد؟`);
     if (!confirmCall) return;
 
-    // Show loading on the button
-    const buttons = document.querySelectorAll('.card-call-btn');
-    let targetBtn = null;
-    for (let btn of buttons) {
-        if (btn.innerText.includes(reportType) || btn.onclick.toString().includes(reportType)) {
-            targetBtn = btn;
-            break;
-        }
-    }
-    if (targetBtn) {
-        targetBtn.disabled = true;
-        targetBtn.innerHTML = '<i class="fa-solid fa-spinner fa-pulse"></i> جاري الاتصال...';
-    }
+    // Disable button and show spinner
+    const originalHtml = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner"></span> جاري الاتصال...';
 
     try {
         const response = await fetch("/initiate-call-report", {
@@ -217,17 +220,19 @@ async function initiateCall(reportType) {
         });
         const data = await response.json();
         if (response.ok && data.success) {
-            alert(data.message);
+            alert(data.message + "\nبعد انتهاء المكالمة، سيتم معالجة التسجيل وسيظهر البلاغ في 'بلاغاتي' خلال دقيقة.");
+            // Optionally, start polling for status update
+            if (data.call_id) {
+                // You could implement a status check, but not required
+            }
         } else {
             alert("خطأ: " + (data.error || "حدث خطأ غير معروف"));
         }
     } catch (error) {
         alert("فشل الاتصال بالخادم: " + error.message);
     } finally {
-        if (targetBtn) {
-            targetBtn.disabled = false;
-            targetBtn.innerHTML = '<i class="fa-solid fa-phone"></i> بلاغ عبر المكالمة';
-        }
+        button.disabled = false;
+        button.innerHTML = originalHtml;
     }
 }
 </script>
